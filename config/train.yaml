@@ -1,0 +1,122 @@
+_base_: common.yaml
+
+# Training artifacts, including checkpoints, runtime metadata and visualizer
+# data, are all written below output/train/.
+work_dir: ./output/train
+log_file: ./output/train/pointdino.log
+load_from: null
+resume: false
+launcher: none
+amp: false
+
+train_dataloader:
+  _delete_: true
+  batch_size: 1
+  num_workers: 2
+  persistent_workers: true
+  sampler:
+    type: DefaultSampler
+    shuffle: true
+  dataset:
+    type: BaseDetDataset
+    data_root: ./data
+    ann_file: train_point.json
+    data_prefix:
+      img_path: export/
+    metainfo:
+      classes: [root]
+    pipeline:
+      - type: LoadImageFromFile
+      - type: LoadAnnotations
+        with_bbox: false
+        with_label: false
+        with_point: true
+      - type: RandomFlip
+        prob: 0.5
+      - type: PackDetInputs
+        meta_keys: [img_id, img_path, ori_shape, img_shape, scale_factor, flip, flip_direction]
+
+val_dataloader:
+  _delete_: true
+  batch_size: 1
+  num_workers: 1
+  persistent_workers: true
+  sampler:
+    type: DefaultSampler
+    shuffle: false
+  dataset:
+    type: BaseDetDataset
+    data_root: ./data
+    ann_file: val_point.json
+    data_prefix:
+      img_path: export/
+    metainfo:
+      classes: [root]
+    test_mode: true
+    pipeline:
+      - type: LoadImageFromFile
+      - type: LoadAnnotations
+        with_bbox: false
+        with_label: false
+        with_point: true
+      - type: PackDetInputs
+        meta_keys: [img_id, img_path, ori_shape, img_shape, scale_factor]
+
+val_evaluator:
+  _delete_: true
+  type: PointDINOMetric
+  distance_thresholds: [5.0, 10.0]
+  score_threshold: 0.5
+
+test_evaluator:
+  _delete_: true
+  type: PointDINOMetric
+  distance_thresholds: [5.0, 10.0]
+  score_threshold: 0.5
+
+train_cfg:
+  type: EpochBasedTrainLoop
+  max_epochs: 100
+  val_interval: 5
+
+val_cfg:
+  type: ValLoop
+
+test_cfg:
+  type: TestLoop
+
+param_scheduler:
+  - type: MultiStepLR
+    begin: 0
+    end: 100
+    by_epoch: true
+    milestones: [70, 90]
+    gamma: 0.1
+
+optim_wrapper:
+  type: OptimWrapper
+  optimizer:
+    type: AdamW
+    lr: 0.0001
+    weight_decay: 0.0001
+  clip_grad:
+    max_norm: 0.1
+    norm_type: 2
+  paramwise_cfg:
+    custom_keys:
+      backbone:
+        lr_mult: 0.1
+
+auto_scale_lr:
+  enable: false
+  base_batch_size: 1
+
+default_hooks:
+  checkpoint:
+    type: CheckpointHook
+    interval: 5
+    by_epoch: true
+    save_best: point/f1@10px
+    rule: greater
+    save_last: true
+    max_keep_ckpts: 5

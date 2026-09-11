@@ -1,0 +1,13 @@
+_base_: common.yaml
+
+# Inference input, model checkpoint and every generated file are configured in
+# this block. Change these values instead of passing command-line overrides.
+inference:
+  checkpoint: ./output/train/best_point_f1@10px_epoch_75.pth
+  input: ./data/inference
+  score_threshold: 0.288
+  device: null
+  output: ./output/inference/prediction.json
+  visualization_dir: ./output/inference/vis
+  pretty: true
+  log_file: ./output/inference/predict.log
