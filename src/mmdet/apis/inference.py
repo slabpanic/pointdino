@@ -23,6 +23,28 @@ from ..structures import DetDataSample, SampleList
 from ..utils import get_test_pipeline_cfg
 
 
+def _load_trusted_checkpoint(model: nn.Module, filename: str):
+    """Load a project checkpoint with Torch's legacy pickle behavior.
+
+    MMEngine 0.10 does not expose Torch's ``weights_only`` argument.  The
+    PointDINO training checkpoints contain MMEngine metadata objects, so they
+    cannot be loaded by Torch 2.6+'s restricted default.  This scoped shim is
+    only used for the caller-provided inference checkpoint, which must be a
+    trusted local artifact.
+    """
+    original_torch_load = torch.load
+
+    def load_with_full_pickle(*args, **kwargs):
+        kwargs.setdefault('weights_only', False)
+        return original_torch_load(*args, **kwargs)
+
+    torch.load = load_with_full_pickle
+    try:
+        return load_checkpoint(model, filename, map_location='cpu')
+    finally:
+        torch.load = original_torch_load
+
+
 def init_detector(
     config: Union[str, Path, Config],
     checkpoint: Optional[str] = None,
@@ -70,7 +92,7 @@ def init_detector(
         warnings.warn('checkpoint is None, use COCO classes by default.')
         model.dataset_meta = {'classes': get_classes('coco')}
     else:
-        checkpoint = load_checkpoint(model, checkpoint, map_location='cpu')
+        checkpoint = _load_trusted_checkpoint(model, checkpoint)
         # Weights converted from elsewhere may not have meta fields.
         checkpoint_meta = checkpoint.get('meta', {})
 

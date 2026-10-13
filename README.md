@@ -5,11 +5,16 @@ query 直接预测单类目标的二维点坐标和置信度。
 
 ## 快速开始
 
-依赖安装（Python 3.12；MMCV 使用 CUDA 12.1 / PyTorch 2.4.1 的官方 wheel）：
+依赖安装：Python 3.12–3.14（包括 3.14t）统一使用 PyTorch 2.10.0 /
+torchvision 0.25.0。MMCV 2.2.0
+没有匹配 3.14t 的预编译包，会由 uv 从源码编译。源码编译要求安装与
+PyTorch CUDA 版本匹配的 CUDA Toolkit，并确保可以找到 `nvcc`；缺少
+Toolkit 时 `uv sync` 会直接拒绝，而不会退回到 CPU 版 MMCV。
 
 ```bash
-uv python install 3.12
-uv venv --python 3.12 --clear
+# 也可以将 3.14t 替换为 3.12
+uv python install 3.14t
+uv venv --python 3.14t --clear
 uv sync --no-dev
 ```
 
