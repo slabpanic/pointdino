@@ -166,18 +166,26 @@ class PointDINOPredictor:
 
     def predict_path(self, image_path: str | Path) -> PointPrediction:
         """Predict points from an image file using the configured pipeline."""
+        import torch
         from mmdet.apis import inference_detector
 
         path = _resolve_path(image_path, kind="image")
-        sample = inference_detector(self.model, str(path))
+        with torch.inference_mode():
+            sample = inference_detector(self.model, str(path))
 
-        import cv2
+        # The loading pipeline already decoded the image and recorded its
+        # original shape. Avoid decoding it again just to obtain dimensions.
+        # Custom pipelines may omit this metadata, so retain the fallback.
+        image_size = sample.metainfo.get("ori_shape")
+        if image_size is None:
+            import cv2
 
-        image = cv2.imread(str(path), cv2.IMREAD_COLOR)
-        if image is None:
-            raise ValueError(f"failed to decode image: {path}")
+            image = cv2.imread(str(path), cv2.IMREAD_COLOR)
+            if image is None:
+                raise ValueError(f"failed to decode image: {path}")
+            image_size = image.shape
         return self._prediction_from_sample(
-            sample, (int(image.shape[0]), int(image.shape[1])),
+            sample, (int(image_size[0]), int(image_size[1])),
             self.score_threshold)
 
 

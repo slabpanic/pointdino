@@ -171,8 +171,9 @@ def inference_detector(
     cfg = model.cfg
 
     if test_pipeline is None:
-        cfg = cfg.copy()
-        test_pipeline = get_test_pipeline_cfg(cfg)
+        # Config.copy() is shallow: replacing the ndarray loader would also
+        # change model.cfg and break later file inference (or other callers).
+        test_pipeline = copy.deepcopy(get_test_pipeline_cfg(cfg))
         if isinstance(imgs[0], np.ndarray):
             # Calling this method across libraries will result
             # in module unregistered error if not prefixed with mmdet.
